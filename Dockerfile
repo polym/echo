@@ -8,6 +8,9 @@ RUN wget collection.b0.upaiyun.com/softwares/upx/upx-for-doc -O /usr/bin/upx \
     && chmod +x /usr/bin/upx
 
 ADD echo.go /root/echo.go
+ADD tpl.html /root/tpl.html
+
+WORKDIR /root/
 
 EXPOSE 1001
-CMD ["go", "run", "/root/echo.go"]
+CMD ["go", "run", "echo.go"]
