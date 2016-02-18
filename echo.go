@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"strconv"
 	"sync"
 	"time"
@@ -20,48 +22,6 @@ type RequestInfo struct {
 	UA         string
 	Body       string
 }
-
-const tpl = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>UPYUN Notify Receiver</title>
-<link rel="stylesheet" href="http://static-cache.b0.upaiyun.com/css/bootstrap.min.css">
-<link rel="stylesheet" href="http://static-cache.b0.upaiyun.com/css/bootstrap-theme.min.css">
-<script src="http://static-cache.b0.upaiyun.com/js/jquery.min.js"></script>
-<script src="http://static-cache.b0.upaiyun.com/js/bootstrap.min.js"></script>
-<style type="text/css">
-.bs-example{
-    margin: auto;
-    width: 1000px;
-}
-</style>
-</head><body><div class="bs-example">
-<table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Method</th>
-				<th>RequestURI</th>
-                <th>RemoteAddr</th>
-                <th>UserAgent</th>
-				<th>Body</th>
-            </tr>
-        </thead>
-        <tbody>
-		{{range .}}
-        <tr class="success"> 
-            <td>{{.Date}}</td>
-            <td>{{.Method}}</td>
-            <td>{{.RequestURI}}</td>
-            <td>{{.RemoteAddr}}</td>
-            <td>{{.UA}}</td>
-            <td>{{.Body}}</td>
-        </tr>
-		{{end}}
-</tbody></table></div></body></html>
-`
 
 var (
 	Reqs      []RequestInfo
@@ -115,9 +75,38 @@ func echoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func queryHandler(w http.ResponseWriter, r *http.Request) {
-	t := template.New("test")
-	t, _ = t.Parse(tpl)
+	t := template.New("tpl.html")
+	t, _ = t.ParseFiles("tpl.html")
 	t.Execute(w, Reqs)
+}
+
+func docHandler(w http.ResponseWriter, r *http.Request) {
+	repo := "https://github.com/upyun/docs.git"
+	user := "ohara"
+	bucket := "upyundocs"
+	pass := ""
+	tmpPath := "/tmp/repo"
+
+	os.RemoveAll(tmpPath)
+	defer os.RemoveAll(tmpPath)
+
+	URL, err := url.ParseRequestURI(r.RequestURI)
+	if err == nil {
+		q := URL.Query()
+		if v := q.Get("pass"); v != "" {
+			pass = v
+			gitCmd := fmt.Sprintf("git clone %s %s", repo, tmpPath)
+			_, err = exec.Command("/bin/bash", "-c", gitCmd).Output()
+			if err == nil {
+				upxCmd := fmt.Sprintf("cd %s && mkdocs build && cd site && upx login %s %s %s && upx put ./",
+					tmpPath, bucket, user, pass)
+				fmt.Println(upxCmd)
+				_, err = exec.Command("/bin/bash", "-c", upxCmd).Output()
+			}
+		}
+	}
+
+	fmt.Println(err)
 }
 
 func main() {
@@ -127,5 +116,6 @@ func main() {
 	maxReqNum = *num
 	http.HandleFunc("/echo", echoHandler)
 	http.HandleFunc("/query", queryHandler)
+	http.HandleFunc("/doc", docHandler)
 	http.ListenAndServe(":"+*port, nil)
 }
