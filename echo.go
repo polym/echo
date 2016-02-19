@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"html/template"
@@ -80,6 +81,17 @@ func queryHandler(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, Reqs)
 }
 
+func decodeHandler(w http.ResponseWriter, r *http.Request) {
+	URL, err := url.ParseRequestURI(r.RequestURI)
+	if err == nil {
+		q := URL.Query()
+		if v := q.Get("base64"); v != "" {
+			b, _ := base64.StdEncoding.DecodeString(v)
+			w.Write(b)
+		}
+	}
+}
+
 func docHandler(w http.ResponseWriter, r *http.Request) {
 	repo := "https://github.com/upyun/docs.git"
 	user := "ohara"
@@ -117,5 +129,6 @@ func main() {
 	http.HandleFunc("/echo", echoHandler)
 	http.HandleFunc("/query", queryHandler)
 	http.HandleFunc("/doc", docHandler)
+	http.HandleFunc("/decode", decodeHandler)
 	http.ListenAndServe(":"+*port, nil)
 }
