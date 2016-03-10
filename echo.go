@@ -113,7 +113,8 @@ func docHandler(w http.ResponseWriter, r *http.Request) {
 				upxCmd := fmt.Sprintf("cd %s && mkdocs build && cd site && upx login %s %s %s && upx put ./",
 					tmpPath, bucket, user, pass)
 				fmt.Println(upxCmd)
-				_, err = exec.Command("/bin/bash", "-c", upxCmd).Output()
+				b, err = exec.Command("/bin/bash", "-c", upxCmd).Output()
+				fmt.Println(string(b))
 			}
 		}
 	}
