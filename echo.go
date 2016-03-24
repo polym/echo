@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
@@ -65,7 +67,12 @@ func echoHandler(w http.ResponseWriter, r *http.Request) {
 			panic(r)
 		}
 		b, _ := ioutil.ReadAll(r.Body)
-		req.Body = string(b)
+		var out bytes.Buffer
+		if json.Indent(&out, b, "", "    ") == nil {
+			req.Body = string(out.Bytes())
+		} else {
+			req.Body = string(b)
+		}
 	}
 
 	if err != nil {
