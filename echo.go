@@ -27,20 +27,25 @@ type RequestInfo struct {
 }
 
 var (
-	Reqs      []RequestInfo
+	ReqsMap   map[string][]RequestInfo
 	maxReqNum int
 	lock      = new(sync.Mutex)
 )
 
-func update(req RequestInfo) {
+func update(key string, req RequestInfo) {
 	lock.Lock()
 	defer lock.Unlock()
-	if len(Reqs) == maxReqNum {
-		Reqs = Reqs[0 : maxReqNum-1]
+	if _, exist := ReqsMap[key]; !exist {
+		ReqsMap[key] = make([]RequestInfo, 0)
 	}
 
-	arr := []RequestInfo{req}
-	Reqs = append(arr, Reqs...)
+	reqs := ReqsMap[key]
+
+	if len(reqs) == maxReqNum {
+		reqs = reqs[0 : maxReqNum-1]
+	}
+
+	ReqsMap[key] = append([]RequestInfo{req}, reqs...)
 }
 
 func echoHandler(w http.ResponseWriter, r *http.Request) {
@@ -52,12 +57,14 @@ func echoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Date = fmt.Sprint(time.Now().Format(time.UnixDate))
+	key := ""
 
 	defer r.Body.Close()
 
 	URL, err := url.ParseRequestURI(r.RequestURI)
 	if err == nil {
 		q := URL.Query()
+		key = q.Get("key")
 		if v := q.Get("sleep"); v != "" {
 			if sec, err := strconv.Atoi(v); err == nil {
 				time.Sleep(time.Duration(sec) * time.Second)
@@ -79,13 +86,23 @@ func echoHandler(w http.ResponseWriter, r *http.Request) {
 		req.Body = fmt.Sprint(err)
 	}
 
-	update(req)
+	update(key, req)
 }
 
 func queryHandler(w http.ResponseWriter, r *http.Request) {
-	t := template.New("tpl.html")
-	t, _ = t.ParseFiles("tpl.html")
-	t.Execute(w, Reqs)
+	URL, err := url.ParseRequestURI(r.RequestURI)
+	if err == nil {
+		q := URL.Query()
+		key := q.Get("key")
+
+		t := template.New("tpl.html")
+		t, _ = t.ParseFiles("tpl.html")
+		if reqs, exists := ReqsMap[key]; exists {
+			t.Execute(w, reqs)
+		} else {
+			t.Execute(w, make([]RequestInfo, 0))
+		}
+	}
 }
 
 func decodeHandler(w http.ResponseWriter, r *http.Request) {
@@ -130,6 +147,7 @@ func docHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	ReqsMap = make(map[string][]RequestInfo)
 	num := flag.Int("r", 50, "max request number to show")
 	port := flag.String("p", "1001", "server listen port")
 	flag.Parse()
