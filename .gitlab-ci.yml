@@ -1,0 +1,19 @@
+stages:
+    - test
+    - build
+test:
+    stage: test
+    image: repo.upyun.com:5043/ci-shared-runner
+    script:
+        - echo 'skip'
+    tags:
+        - offline-test
+build:
+    stage: build
+    script:
+		- img=repo.upyun.com:5043/echo:$CI_BUILD_TAG
+		- docker build -t $img . && docker push $img
+    tags:
+        - on-line-docker-builder
+    only:
+        - tags@consumers/echo
