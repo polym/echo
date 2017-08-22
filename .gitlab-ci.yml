@@ -11,8 +11,8 @@ test:
 build:
     stage: build
     script:
-		- img=repo.upyun.com:5043/echo:$CI_BUILD_TAG
-		- docker build -t $img . && docker push $img
+        - img=repo.upyun.com:5043/echo:$CI_BUILD_TAG
+        - docker build -t $img . && docker push $img
     tags:
         - on-line-docker-builder
     only:
