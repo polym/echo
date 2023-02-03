@@ -1,4 +1,4 @@
-FROM golang:1.6
+FROM golang:1.19
 
 RUN apt-get update && apt-get install -y python-pip git-core \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
